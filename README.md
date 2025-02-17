@@ -9,15 +9,22 @@
 ✅ Uses **configurable settings** for API connection and file structure  
 ✅ Automatically **creates missing folders**  
 ✅ Supports **custom markdown templates** for new audiobook notes  
-✅ Organizes notes under **`<settings.folder>/authorLastFirst/<Series if exists>/title.md`**  
+✅ Organizes notes under **`<settings.folder>/<settings.sortBy>/<series?>/title.md`**  
 
 ---
 
 ## 🔧 Installation
 1. **Download Repo + Extract**
-2. **Copy Repo Folder as `audiobookshelf-importer`**:
    ```
-   cp -rf ~/Downloads/obsidian-audiobookshelf-importer </path/to/obsidian/vault>/.obsidian/plugins/audiobookshelf-importer
+   cd </path/to/repo>
+   ```
+2. **Create Obsidian Plugin folder**
+   ```
+   mkdir </path/to/obsidian/vault>/.obsidian/plugins/audiobookshelf-importer
+   ```
+3. **Copy Plugin Files to `audiobookshelf-importer`**:
+   ```
+   cp main.js manifest.json </path/to/obsidian/vault>/.obsidian/plugins/audiobookshelf-importer/.
    ```
 3. **Restart Obsidian** and enable **Audiobookshelf Importer**.
 4. **Configre Audiobookshelf Importer**.
@@ -31,6 +38,7 @@
 | **`token`** | Your **API token** for authentication. Find in `Settings > Users > <USER> > API Key` |
 | **`folder`** | The **base directory** in Obsidian where audiobook notes will be stored, organized by `authorNameLF`, then by series. |
 | **`template`** | A Markdown **template** for newly created audiobook notes (**not yet implemented**). |
+| **`sortBy`** | `authorName` or `authorNameLF`. Used to determine how pages are created in folder structure. [default: `authorNameLF`]
 
 ### 📁 File Structure
 Audiobook notes are stored in:
