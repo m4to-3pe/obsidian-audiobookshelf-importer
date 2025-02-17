@@ -35,7 +35,7 @@
 ### 📁 File Structure
 Audiobook notes are stored in:
 ```
-<settings.folder>/authorNameLF/<series_if_exists>/title.md
+<settings.folder>/<authorNameLF>/<series_if_exists>/<title>.md
 ```
 🔹 **Example Folder Structure**:
 ```
