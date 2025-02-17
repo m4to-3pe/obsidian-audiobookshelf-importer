@@ -33,7 +33,7 @@
 
 | **Setting**   | **Description** |
 |--------------|---------------|
-| **`folder`** | The **base directory** in Obsidian where audiobook notes will be stored, organized by `authorNameLF`, then by series. |
+| **`folder`** | The **base directory** in Obsidian where audiobook notes will be stored, organized by `this.settings.sortBy`, then by series. |
 | **`host`** | The base URL of your **Audiobookshelf** API (**exclude `https://`**). |
 | **`library`** | The **library ID** used for fetching audiobooks. Extract only the unique identifier from the URL: `https://abs.ex.org/audiobookshelf/library/`[**`ads76yfsd-sd767-p9aa-34dsd-989s8dasd`**]. |
 | **`template`** | A Markdown **template** for newly created audiobook notes (**not yet implemented**). |
