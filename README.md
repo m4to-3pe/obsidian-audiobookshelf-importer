@@ -15,15 +15,12 @@
 
 ## 🔧 Installation
 1. **Download Repo + Extract**
-2. **Navigate to your Obsidian vault**:
+2. **Copy Repo Folder as `audiobookshelf-importer`**:
    ```
-   cd </path/to/obsidian/vault>/.obsidian/plugins/
+   cp -rf ~/Downloads/obsidian-audiobookshelf-importer </path/to/obsidian/vault>/.obsidian/plugins/audiobookshelf-importer
    ```
-3. **Copy Repo Folder**:
-   ```
-   cp -rf ~/Downloads/obsidian-audiobookshelf-importer .
-   ```
-4. **Restart Obsidian** and enable **Obsidian Audiobookshelf Importer**.
+3. **Restart Obsidian** and enable **Audiobookshelf Importer**.
+4. **Configre Audiobookshelf Importer**.
 
 ---
 
@@ -31,19 +28,22 @@
 |--------------|---------------|
 | **`host`** | The base URL of your **Audiobookshelf** API (**exclude `https://`**). |
 | **`library`** | The **library ID** used for fetching audiobooks. Extract only the unique identifier from the URL: `https://abs.ex.org/audiobookshelf/library/`[**`ads76yfsd-sd767-p9aa-34dsd-989s8dasd`**]. |
-| **`token`** | Your **API token** for authentication. Find in `Settings > Users > <USER>` |
-| **`folder`** | The **base directory** in Obsidian where audiobook notes will be stored, organized by `AuthorLastNameFirstName`, then by series. |
+| **`token`** | Your **API token** for authentication. Find in `Settings > Users > <USER> > API Key` |
+| **`folder`** | The **base directory** in Obsidian where audiobook notes will be stored, organized by `authorNameLF`, then by series. |
 | **`template`** | A Markdown **template** for newly created audiobook notes (**not yet implemented**). |
 
 ### 📁 File Structure
 Audiobook notes are stored in:
 ```
-<settings.folder>/authorLastFirst/<Series if exists>/title.md
+<settings.folder>/authorNameLF/<series_if_exists>/title.md
 ```
-🔹 **Example Output for Terry Goodkind’s Book**:
+🔹 **Example Folder Structure**:
 ```
-Audiobooks/
-  ├── GoodkindTerry/
+ABS/
+  ├── Goodkind, Terry/
+  │   ├── The Law of Nines.md
+  |   
+  ├── Goodkind, Terry/
   │   ├── Sword of Truth/
   │   │   ├── Wizards First Rule.md
 ```
@@ -101,7 +101,7 @@ Data::
    ```
 * From the Sidebar:
    ```
-   Click the book icon that gets added.
+   Click the audio-file icon in the ribbon labeled 'ABS'.
    ```
 3. The plugin will:
    - Retrieve audiobook metadata from Audiobookshelf

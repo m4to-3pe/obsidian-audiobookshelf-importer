@@ -32,7 +32,7 @@ export default class ABSPlugin extends Plugin {
 
     this.addSettingTab(new ABSPluginSettingTab(this.app, this));
 
-    const ribbonIconEl = this.addRibbonIcon("book", "ABS", () => {
+    const ribbonIconEl = this.addRibbonIcon("audio-file", "ABS", () => {
       new Notice("Fetching audiobooks...");
       this.fetchAndCreateNotes();
     });
