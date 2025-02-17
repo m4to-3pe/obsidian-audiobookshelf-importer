@@ -1,0 +1,10 @@
+{
+  "id": "audiobookshelf-importer",
+  "name": "Audiobookshelf Importer",
+  "version": "1.0.0",
+  "minAppVersion": "1.0.0",
+  "description": "Fetch books from Audiobookshelf",
+  "author": "michaeldvinci",
+  "authorUrl": "https://michaeldvinci.com",
+  "isDesktopOnly": false
+}
