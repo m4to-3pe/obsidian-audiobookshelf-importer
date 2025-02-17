@@ -88,32 +88,33 @@ export default class ABSPlugin extends Plugin {
     }
 
     let abData: Record<string, any> = {};
-
+    const abJsonData : any = {};
     for (const book of books) {
       var metadata = book.metadata;
-      abData["author"] = metadata.authorName;
-      abData["authorNameLF"] = metadata.authorNameLF;
-      abData["coverURL"] = `https://${this.settings.host}/audiobookshelf/api/items/${book.id}/cover`
-      abData["description"] = metadata.description;
-      abData["jsonData"] = JSON.stringify(book, null, 2)
-      abData["narrator"] = metadata.narrator;
-      abData["publishedDate"] = metadata.publishedDate;
-      abData["publishedYear"] = metadata.publishedYear;
-      abData["publisher"] = metadata.publisher;
-      abData["title"] = metadata.title;
+      abJsonData.metadata = metadata;
+      abJsonData.authorName = metadata.authorName;
+      abJsonData.authorNameLF = metadata.authorNameLF;
+      abJsonData.coverURL = `https://${this.settings.host}/audiobookshelf/api/items/${book.id}/cover`;
+      abJsonData.description = metadata.description;
+      abJsonData.jsonData = JSON.stringify(book, null, 2);
+      abJsonData.narrator = metadata.narrator;
+      abJsonData.publishedDate = metadata.publishedDate;
+      abJsonData.publishedYear = metadata.publishedYear;
+      abJsonData.publisher = metadata.publisher;
+      abJsonData.title = metadata.title;
 
       const sanitizedTitle = metadata.title.replace(/[\/:*?"<>|]/g, "");
       var filePath = ""
 
       if (book.metadata.seriesName != "") {
-        filePath = `${this.settings.folder}/${abData["authorNameLF"]}/${book.metadata.seriesName.replace(/\s+#\d+$/, "").trim()}/${sanitizedTitle}.md`;
+        filePath = `${this.settings.folder}/${abJsonData.authorNameLF}/${book.metadata.seriesName.replace(/\s+#\d+$/, "").trim()}/${sanitizedTitle}.md`;
       } else {
-        filePath = `${this.settings.folder}/${abData["authorNameLF"]}/${sanitizedTitle}.md`;
+        filePath = `${this.settings.folder}/${abJsonData.authorNameLF}/${sanitizedTitle}.md`;
       }
 
       if (!this.app.vault.getAbstractFileByPath(filePath)) {
         await this.ensureFolderExists(filePath);
-        await this.app.vault.create(filePath, this.getBookTemplate(abData))
+        await this.app.vault.create(filePath, this.getBookTemplate(abJsonData))
         // await this.app.vault.create(filePath, JSON.stringify(book, null, 2));
         console.log(`Created: ${filePath}`);
       } else {
@@ -139,17 +140,11 @@ export default class ABSPlugin extends Plugin {
     }
   }
 
-  getBookTemplate(abData) {
+  getBookTemplate(abJsonData) {
     return `${this.settings.template}`
-      .replace(/{{author}}/g, abData["author"])
-      .replace(/{{jsonData}}/g, abData["jsonData"])
-      .replace(/{{title}}/g, abData["title"])
-      .replace(/{{coverURL}}/g, abData["coverURL"])
-      .replace(/{{narrator}}/g, abData["narrator"])
-      .replace(/{{publishedYear}}/g, abData["publishedYear"])
-      .replace(/{{publishedDate}}/g, abData["publishedDate"])
-      .replace(/{{publisher}}/g, abData["publisher"])
-      .replace(/{{description}}/g, abData["description"]);
+      .replace(/{{(.*?)}}/g, (_, key) => {
+        return abJsonData[key.trim()] || "";
+        });
   }
 
   async saveSettings() {

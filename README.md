@@ -61,7 +61,7 @@ Example:
 ![{{title}}|200x200]({{coverURL}})
 
 ## ✍️ Author 
-{{author}}
+{{authorName}}
 
 ## 📜 Description
 {{description}}
@@ -78,7 +78,7 @@ Data::
 ```
 
 ### 🔹 Supported Placeholders
-- `{{author}}`
+- `{{authorName}}`
 - `{{authorNameLF}}`
 - `{{coverURL}}`
 - `{{description}}`
