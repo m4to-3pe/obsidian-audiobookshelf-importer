@@ -31,19 +31,19 @@
 
 ---
 
-| **Setting**   | **Description** |
-|--------------|---------------|
-| **`folder`** | The **base directory** in Obsidian where audiobook notes will be stored, organized by `this.settings.sortBy`, then by series. |
-| **`host`** | The base URL of your **Audiobookshelf** API (**exclude `https://`**). |
-| **`library`** | The **library ID** used for fetching audiobooks. Extract only the unique identifier from the URL: `https://abs.ex.org/audiobookshelf/library/`[**`ads76yfsd-sd767-p9aa-34dsd-989s8dasd`**]. |
-| **`template`** | A Markdown **template** to apply to newly created audiobook notes. |
-| **`token`** | Your **API token** for authentication. Find in `Settings > Users > <USER> > API Key` |
-| **`sortBy`** | `authorName` or `authorNameLF`. Used to determine how pages are created in folder structure. [default: `authorNameLF`]
+| **Setting**   | **Description** | **Example**
+|--------------|---------------|---|
+| **`folder`** | The **base directory** in Obsidian where audiobook notes will be stored, organized by `this.settings.sortBy`, then by series. | `Books/ABS` |
+| **`host`** | The base URL of your **Audiobookshelf** API (**exclude `https://`**). | `abs.example.org` |
+| **`library`** | The **library ID** used for fetching audiobooks. Extract only the unique identifier from the URL: `https://abs.ex.org/audiobookshelf/library/<id>`. | `ads76yfsd-sd767-p9aa-34dsd-989s8dasd` |
+| **`template`** | A Markdown **template** to apply to newly created audiobook notes. | [🔗 Markdown Template Example](#📜-markdown-template-example) |
+| **`token`** | Your **API token** for authentication. Find in `Settings > Users > <USER> > API Key` | `<token>` |
+| **`sortBy`** | `authorName` or `authorNameLF`. Used to determine how pages are created in folder structure. | [default: `authorNameLF`] |
 
 ### 📁 File Structure
 Audiobook notes are stored in:
 ```
-<settings.folder>/<authorNameLF>/<series_if_exists>/<title>.md
+<settings.folder>/<settings.sortBy>/<series?>/title.md
 ```
 🔹 **Example Folder Structure**:
 ```
