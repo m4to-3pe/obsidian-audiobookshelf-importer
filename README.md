@@ -47,13 +47,21 @@ Audiobook notes are stored in:
 ```
 🔹 **Example Folder Structure**:
 ```
-ABS/
-  ├── Goodkind, Terry/
-  │   ├── The Law of Nines.md
-  |   
-  ├── Goodkind, Terry/
-  │   ├── Sword of Truth/
-  │   │   ├── Wizards First Rule.md
+Books/
+├── ABS/
+│   ├── Goodkind, Terry/
+│   │   ├── The Law of Nines.md
+│   |   
+│   ├── Goodkind, Terry/
+│   │   ├── Sword of Truth/
+│   │   │   ├── Wizards First Rule.md
+│   |   
+│   ├── Terry Goodkind/
+│   │   ├── The Law of Nines.md
+│   |   
+│   ├── Terry Goodkind/
+│   │   ├── Sword of Truth/
+│   │   │   ├── Wizards First Rule.md
 ```
 
 ---
