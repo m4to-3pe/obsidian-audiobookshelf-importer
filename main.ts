@@ -1,21 +1,49 @@
-import {  request, Notice, Plugin, PluginSettingTab, Setting } from "obsidian";
+import {  request, Notice, Plugin, PluginSettingTab, Setting, App } from "obsidian";
 
 interface ABSPluginSettings {
   host: string;
-  library: string;
-  token: string;
-  folder: string;
-  template: string;
-  sortBy: string
+  apiKey: string;
+  
+  abDir: string;
+  abEnable: boolean;
+  abLib: string;
+  abSortBy: string;
+  abTemplate: string;
+
+  ebDir: string;
+  ebEnable: boolean;
+  ebLib: string;
+  ebSortBy: string;
+  ebTemplate: string;
+
+  podDir: string;
+  podEnable: boolean;
+  podLib: string;
+  podSortBy: string;
+  podTemplate: string;
 }
 
 const DEFAULT_SETTINGS: ABSPluginSettings = {
   host: "",
-  library: "",
-  token: "",
-  folder: "",
-  template: "",
-  sortBy: "",
+  apiKey: "",
+
+  abDir: "",
+  abEnable: false,
+  abLib: "",
+  abSortBy: "",
+  abTemplate: "",
+
+  ebDir: "",
+  ebEnable: false,
+  ebLib: "",
+  ebSortBy: "",
+  ebTemplate: "",
+  
+  podDir: "",
+  podEnable: false,
+  podLib: "",
+  podSortBy: "",
+  podTemplate: "",
 };
 
 export default class ABSPlugin extends Plugin {
@@ -49,23 +77,37 @@ export default class ABSPlugin extends Plugin {
   }
 
   async fetchAndCreateNotes() {
-    if (!this.settings.host || !this.settings.library || !this.settings.token) {
-      new Notice("Please configure API settings in the ABS Plugin settings.");
+    if (!this.settings.host || !this.settings.apiKey) {
+      new Notice("Please configure API settings in the Audiobookshelf Importer settings.");
       return;
     }
-    if (!this.settings.folder) {
-      new Notice("Please configure destination folder in the ABS Plugin settings.");
+    if ((this.settings.abEnable === false) && (this.settings.ebEnable === false) && (this.settings.podEnable === false) ) {
+      new Notice("Please enable a library to import in the Audiobookshelf Importer settings.");
       return;
     }
 
-    const apiUrl = `https://${this.settings.host}/api/libraries/${this.settings.library}/items?sort=media.metadata.title`;
+    if (this.settings.abEnable === true) {
+      this.abImport()
+    }
+
+    // if (this.settings.ebEnable === true) {
+    //   this.ebImport()
+    // }
+
+    // if (this.settings.podEnable === true) {
+    //   this.podImport()
+    // }
+  }
+
+  async abImport() {
+    const apiUrl = `https://${this.settings.host}/api/libraries/${this.settings.abLib}/items?sort=media.metadata.title`;
 
     try {
       const response = await request({
         url: apiUrl,
         method: "GET",
         headers: {
-          Authorization: `Bearer ${this.settings.token}`,
+          Authorization: `Bearer ${this.settings.apiKey}`,
         },
       });
   
@@ -81,15 +123,13 @@ export default class ABSPlugin extends Plugin {
         id: book.id,
         relPath: book.relPath,
         metadata: book.media?.metadata || {}, 
-      }))
-      .sort((a, b) => a.relPath.localeCompare(b.relPath)); 
+      }));
 
-    const folder = this.app.vault.getAbstractFileByPath(this.settings.folder);
+    const folder = this.app.vault.getAbstractFileByPath(this.settings.abDir);
     if (!folder) {
-      await this.app.vault.createFolder(this.settings.folder);
+      await this.app.vault.createFolder(this.settings.abDir);
     }
 
-    let abData: Record<string, any> = {};
     const abJsonData : any = {};
     for (const book of books) {
       var metadata = book.metadata;
@@ -108,13 +148,13 @@ export default class ABSPlugin extends Plugin {
       const sanitizedTitle = metadata.title.replace(/[\/:*?"<>|]/g, "");
 
       var sortArtist = abJsonData.authorNameLF
-      if (this.settings.sortBy == "authorNameLF") {
+      if (this.settings.abSortBy == "authorNameLF") {
         sortArtist = abJsonData.authorNameLF
-      }else if (this.settings.sortBy == "authorName") {
+      }else if (this.settings.abSortBy == "authorName") {
         sortArtist = abJsonData.authorName
       }
 
-      var filePath = `${this.settings.folder}/${sortArtist}/${sanitizedTitle}.md`;
+      var filePath = `${this.settings.abDir}/${sortArtist}/${sanitizedTitle}.md`;
 
       const regex = /\b\d+(\.\d+)?,/;
 
@@ -127,7 +167,7 @@ export default class ABSPlugin extends Plugin {
         const seriesTitle = origName.replace(/\s+#\d+(\.\d+)?$/, "").trim();
         const numberMatch = origName.match(/\s+#(\d+(\.\d+)?)$/);
         const number = numberMatch ? numberMatch[1] : null;
-        filePath = `${this.settings.folder}/${sortArtist}/${seriesTitle}/${number} | ${sanitizedTitle}.md`;
+        filePath = `${this.settings.abDir}/${sortArtist}/${seriesTitle}/${number} | ${sanitizedTitle}.md`;
       }
 
       // console.log(filePath)
@@ -159,8 +199,8 @@ export default class ABSPlugin extends Plugin {
     }
   }
 
-  getBookTemplate(abJsonData) {
-    return this.settings.template
+  getBookTemplate(abJsonData: { [x: string]: any; }) {
+    return this.settings.abTemplate
       .replace(/{{(.*?)}}/g, (_, key) => {
         return abJsonData[key.trim()] || "";
         });
@@ -174,7 +214,7 @@ export default class ABSPlugin extends Plugin {
 class ABSPluginSettingTab extends PluginSettingTab {
   plugin: ABSPlugin;
 
-  constructor(app, plugin) {
+  constructor(app: App, plugin: Plugin) {
     super(app, plugin);
     this.plugin = plugin;
   }
@@ -183,11 +223,11 @@ class ABSPluginSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
-    containerEl.createEl("h2", { text: "ABS Plugin Settings" });
+    containerEl.createEl("h2", { text: "Audiobookshelf Importer Settings" });
 
     new Setting(containerEl)
-      .setName("API Host")
-      .setDesc("Enter the base URL of the API (without https://)")
+      .setName("ABS Host")
+      .setDesc("Enter the base URL (without \"https://\")")
       .addText((text) =>
         text
           .setPlaceholder("example.abs.org")
@@ -199,75 +239,265 @@ class ABSPluginSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("Library")
-      .setDesc("Enter the library ID or name")
+      .setName("API Key")
+      .setDesc("Enter your API Key")
       .addText((text) =>
         text
-          .setPlaceholder("audiobooks")
-          .setValue(this.plugin.settings.library)
+          .setPlaceholder("<apiKey>")
+          .setValue(this.plugin.settings.apiKey)
           .onChange(async (value) => {
-            this.plugin.settings.library = value.trim();
+            this.plugin.settings.apiKey = value.trim();
             await this.plugin.saveSettings();
           })
       );
 
     new Setting(containerEl)
-      .setName("API Token")
-      .setDesc("Enter your API token")
-      .addText((text) =>
-        text
-          .setPlaceholder("your-token-here")
-          .setValue(this.plugin.settings.token)
+      .setName("Audiobooks")
+      .setDesc("Toggle to enable + show settings.")
+      .addToggle(toggle => {
+        toggle
+          .setValue(this.plugin.settings.abEnable)
           .onChange(async (value) => {
-            this.plugin.settings.token = value.trim();
+            this.plugin.settings.abEnable = value;
             await this.plugin.saveSettings();
-          })
-      );
+            abFieldsContainer.style.display = value ? "block" : "none";
+          });
+      });
+  
+    const abWrapper = containerEl.createDiv({ cls: "stacked-inputs" });
+    const abFieldsContainer = abWrapper.createDiv({ cls: "fields-container" });
 
-    new Setting(containerEl)
-      .setName("Folder")
-      .setDesc("Where to create pages.")
-      .addText((text) =>
+    const abDirContainer = abFieldsContainer.createDiv();
+    abDirContainer.createEl("label", { text: "Local Directory:", cls: "ab-setting-item-name" });
+    new Setting(abDirContainer)
+      .addText(text => {
         text
-          .setPlaceholder("ABS")
-          .setValue(this.plugin.settings.folder)
+          .setPlaceholder("ABS/Audiobooks")
+          .setValue(this.plugin.settings.abDir)
           .onChange(async (value) => {
-            this.plugin.settings.folder = value.trim();
+            this.plugin.settings.abDir = value;
             await this.plugin.saveSettings();
-          })
-      );
+          });
 
-    new Setting(containerEl)
-      .setName("PAge Author Sort")
-      .setDesc("Sort new Pages. Default: By Author Name | LN, FN")
-      .addDropdown((dropdown) => {
-        const options = {
-          ["authorNameLF" /* authorNameLF */]: "Author Name | LN, FN (Asc)",
-          ["authorName" /* authorName */]: "Author Name | FN, LN (Asc)"
-        };
-        dropdown
-        .addOptions(options)
-          .setValue(this.plugin.settings.sortBy)
-          .onChange(async (value) => {
-            console.log("value", value);
-            this.plugin.settings.sortBy = value;
-            await this.plugin.saveSettings();
-          }
-        );
+        text.inputEl.style.width = "100%";
       });
 
-    new Setting(containerEl)
-      .setName("Template")
-      .setDesc("Template for new pages.")
-      .addTextArea((text) =>
+    const abLibContainer = abFieldsContainer.createDiv();
+    abLibContainer.createEl("label", { text: "Library ID:", cls: "ab-setting-item-name" });
+    new Setting(abLibContainer)
+      .addText(text => {
         text
-          .setPlaceholder("<!--!>")
-          .setValue(this.plugin.settings.template)
+          .setPlaceholder("ads76yfsd-sd767-p9aa-34dsd-989s8dasd")
+          .setValue(this.plugin.settings.abLib)
           .onChange(async (value) => {
-            this.plugin.settings.template = value.trim();
+            this.plugin.settings.abLib = value;
+            await this.plugin.saveSettings();
+          });
+
+        text.inputEl.style.width = "100%";
+      });
+
+    const abSortByContainer = abFieldsContainer.createDiv();
+    abSortByContainer.createEl("label", { text: "Page Sort:", cls: "ab-setting-item-name" });
+    new Setting(abSortByContainer)
+      .addDropdown((dropdown) => {
+        const options = {
+          ["authorName" /* authorName */]: "Author Name | FN, LN (Asc)",
+          ["authorNameLF" /* authorNameLF */]: "Author Name | LN, FN (Asc)",
+        };
+        dropdown
+          .addOptions(options)
+          .setValue(this.plugin.settings.abSortBy)
+          .onChange(async (value) => {
+            console.log("value", value);
+            this.plugin.settings.abSortBy = value;
+            await this.plugin.saveSettings();
+        });
+        dropdown.selectEl.style.width = "100%";
+      });
+
+    const abTemplateContainer = abFieldsContainer.createDiv();
+    abTemplateContainer.createEl("label", { text: "Page Template:", cls: "ab-setting-item-name" });
+    new Setting(abTemplateContainer)
+      .addTextArea((textArea) => {
+        textArea
+          .setPlaceholder("<!--!>")
+          .setValue(this.plugin.settings.abTemplate)
+          .onChange(async (value) => {
+            this.plugin.settings.abTemplate = value.trim();
             await this.plugin.saveSettings();
           })
-      );
+        textArea.inputEl.style.height = "150px";
+        textArea.inputEl.style.width = "100%";
+      });
+    abWrapper.appendChild(abFieldsContainer);
+    abFieldsContainer.style.display = this.plugin.settings.abEnable ? "block" : "none";
+  
+    new Setting(containerEl)
+      .setName("eBooks")
+      .setDesc("Toggle to enable + show settings.")
+      .addToggle(toggle => {
+        toggle
+          .setValue(this.plugin.settings.ebEnable)
+          .onChange(async (value) => {
+            this.plugin.settings.ebEnable = value;
+            await this.plugin.saveSettings();
+            ebFieldsContainer.style.display = value ? "block" : "none";
+          });
+      });
+
+    const ebWrapper = containerEl.createDiv({ cls: "stacked-inputs" });
+    const ebFieldsContainer = ebWrapper.createDiv({ cls: "fields-container" });
+
+    const ebDirContainer = ebFieldsContainer.createDiv();
+    ebDirContainer.createEl("label", { text: "Local Directory:", cls: "eb-setting-item-name" });
+
+    new Setting(ebDirContainer)
+      .addText(text => {
+        text
+          .setPlaceholder("ABS/eBooks")
+          .setValue(this.plugin.settings.ebDir)
+          .onChange(async (value) => {
+            this.plugin.settings.ebDir = value;
+            await this.plugin.saveSettings();
+          });
+
+        text.inputEl.style.width = "100%";
+      });
+
+    const ebLibContainer = ebFieldsContainer.createDiv();
+    ebLibContainer.createEl("label", { text: "Library ID:", cls: "eb-setting-item-name" });
+    new Setting(ebLibContainer)
+      .addText(text => {
+        text
+          .setPlaceholder("ads76yfsd-sd767-p9aa-34dsd-989s8dasd")
+          .setValue(this.plugin.settings.ebLib)
+          .onChange(async (value) => {
+            this.plugin.settings.ebLib = value;
+            await this.plugin.saveSettings();
+          });
+
+        text.inputEl.style.width = "100%";
+      });
+
+    const ebSortByContainer = ebFieldsContainer.createDiv();
+    ebSortByContainer.createEl("label", { text: "Page Sort:", cls: "eb-setting-item-name" });
+    new Setting(ebSortByContainer)
+      .addDropdown((dropdown) => {
+        const options = {
+          ["authorName" /* authorName */]: "Author Name | FN, LN (Asc)",
+          ["authorNameLF" /* authorNameLF */]: "Author Name | LN, FN (Asc)",
+        };
+        dropdown
+          .addOptions(options)
+          .setValue(this.plugin.settings.ebSortBy)
+          .onChange(async (value) => {
+            console.log("value", value);
+            this.plugin.settings.ebSortBy = value;
+            await this.plugin.saveSettings();
+        });
+        dropdown.selectEl.style.width = "100%";
+      });
+
+    const ebTemplateContainer = ebFieldsContainer.createDiv();
+    ebTemplateContainer.createEl("label", { text: "Page Template:", cls: "eb-setting-item-name" });
+    new Setting(ebTemplateContainer)
+      .addTextArea((textArea) => {
+        textArea
+          .setPlaceholder("<!--!>")
+          .setValue(this.plugin.settings.ebTemplate)
+          .onChange(async (value) => {
+            this.plugin.settings.ebTemplate = value.trim();
+            await this.plugin.saveSettings();
+          })
+        textArea.inputEl.style.height = "150px";
+        textArea.inputEl.style.width = "100%";
+      });
+    ebWrapper.appendChild(ebFieldsContainer);
+    ebFieldsContainer.style.display = this.plugin.settings.ebEnable ? "block" : "none";
+
+    new Setting(containerEl)
+    .setName("Podcasts")
+    .setDesc("Toggle to enable + show settings.")
+    .addToggle(toggle => {
+      toggle
+        .setValue(this.plugin.settings.podEnable)
+        .onChange(async (value) => {
+          this.plugin.settings.podEnable = value;
+          await this.plugin.saveSettings();
+          podFieldsContainer.style.display = value ? "block" : "none";
+        });
+    });
+
+    const podWrapper = containerEl.createDiv({ cls: "stacked-inputs" });
+    const podFieldsContainer = podWrapper.createDiv({ cls: "fields-container" });
+
+    const podDirContainer = podFieldsContainer.createDiv();
+    podDirContainer.createEl("label", { text: "Local Directory:", cls: "pod-setting-item-name" });
+    new Setting(podDirContainer)
+      .addText(text => {
+        text
+          .setPlaceholder("ABS/Podcasts")
+          .setValue(this.plugin.settings.podDir)
+          .onChange(async (value) => {
+            this.plugin.settings.podDir = value;
+            await this.plugin.saveSettings();
+          });
+
+        text.inputEl.style.width = "100%";
+      });
+
+    const podLibContainer = podFieldsContainer.createDiv();
+    podLibContainer.createEl("label", { text: "Library ID:", cls: "pod-setting-item-name" });
+    new Setting(podLibContainer)
+      .addText(text => {
+        text
+          .setPlaceholder("ads76yfsd-sd767-p9aa-34dsd-989s8dasd")
+          .setValue(this.plugin.settings.podLib)
+          .onChange(async (value) => {
+            this.plugin.settings.podLib = value;
+            await this.plugin.saveSettings();
+          });
+
+        text.inputEl.style.width = "100%";
+      });
+
+    const podSortByContainer = podFieldsContainer.createDiv();
+    podSortByContainer.createEl("label", { text: "Page Sort:", cls: "pod-setting-item-name" });
+    new Setting(podSortByContainer)
+      .addDropdown((dropdown) => {
+        const options = {
+          ["authorName" /* authorName */]: "Author Name | FN, LN (Asc)",
+          ["authorNameLF" /* authorNameLF */]: "Author Name | LN, FN (Asc)",
+        };
+        dropdown
+          .addOptions(options)
+          .setValue(this.plugin.settings.podSortBy)
+          .onChange(async (value) => {
+            console.log("value", value);
+            this.plugin.settings.podSortBy = value;
+            await this.plugin.saveSettings();
+        });
+        dropdown.selectEl.style.width = "100%";
+      });
+
+    const podTemplateContainer = podFieldsContainer.createDiv();
+    podTemplateContainer.createEl("label", { text: "Page Template:", cls: "pod-setting-item-name" });
+    new Setting(podTemplateContainer)
+      .addTextArea((textArea) => {
+        textArea
+          .setPlaceholder("<!--!>")
+          .setValue(this.plugin.settings.podTemplate)
+          .onChange(async (value) => {
+            this.plugin.settings.podTemplate = value.trim();
+            await this.plugin.saveSettings();
+          })
+        textArea.inputEl.style.height = "150px";
+        textArea.inputEl.style.width = "100%";
+      });
+    podWrapper.appendChild(podFieldsContainer);
+    podFieldsContainer.style.display = this.plugin.settings.podEnable ? "block" : "none";
+
   }
 }
 

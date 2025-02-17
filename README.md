@@ -9,7 +9,7 @@
 ✅ Uses **configurable settings** for API connection and file structure  
 ✅ Automatically **creates missing folders**  
 ✅ Supports **custom markdown templates** for new audiobook notes  
-✅ Organizes notes under **`<settings.folder>/<settings.sortBy>/<series?>/title.md`**  
+✅ Organizes notes under **`<settings.abDir>/<settings.sortBy>/<series?>/title.md`**  
 
 ---
 
@@ -31,19 +31,22 @@
 
 ---
 
-| **Setting**   | **Description** | **Example**
+| **Settings**   | **Description** | **Example**
 |--------------|---------------|---|
-| **`folder`** | The **base directory** in Obsidian where audiobook notes will be stored, organized by `this.settings.sortBy`, then by series. | `Books/ABS` |
 | **`host`** | The base URL of your **Audiobookshelf** API (**exclude `https://`**). | `abs.example.org` |
-| **`library`** | The **library ID** used for fetching audiobooks. Extract only the unique identifier from the URL: `https://abs.ex.org/audiobookshelf/library/<id>`. | `ads76yfsd-sd767-p9aa-34dsd-989s8dasd` |
-| **`template`** | A Markdown **template** to apply to newly created audiobook notes. | [🔗 Markdown Template Example](#📜-markdown-template-example) |
-| **`token`** | Your **API token** for authentication. Find in `Settings > Users > <USER> > API Key` | `<token>` |
-| **`sortBy`** | `authorName` or `authorNameLF`. Used to determine how pages are created in folder structure. | [default: `authorNameLF`] |
+| **`apiKey`** | Your **API token** for authentication. Find in `Settings > Users > <USER> > API Key` | `<token>` |
+| **`*Enable`** | Toggle to enable + show settings. | [default: `false`] |
+| **`*Dir`** | The **base directory** in Obsidian where notes will be stored, organized by `this.settings.*SortBy`, then by series. | `Books/ABS` |
+| **`*Lib`** | The **library ID** used for fetching audiobooks. Extract only the unique identifier from the URL: `https://abs.ex.org/audiobookshelf/library/<id>`. | `ads76yfsd-sd767-p9aa-34dsd-989s8dasd` |
+| **`*SortBy`** | `authorName` or `authorNameLF`. Used to determine how pages are created in folder structure. | [default: `authorNameLF`] |
+| **`*Template`** | A Markdown **template** to apply to newly created notes. | [🔗 Markdown Template Example](#markdown-template-example) |
+
+![settings.png](resources/settings.png)
 
 ### 📁 File Structure
 Audiobook notes are stored in:
 ```
-<settings.folder>/<settings.sortBy>/<series?>/title.md
+<settings.*Dir>/<settings.*SortBy>/<series?>/title.md
 ```
 🔹 **Example Folder Structure**:
 ```
@@ -51,26 +54,27 @@ Books/
 ├── ABS/
 |   |
 | sortBy: authorName
-│   ├── Terry Goodkind/
-│   │   ├── The Law of Nines.md
-│   |   
+|   |
 │   ├── Terry Goodkind/
 │   │   ├── Sword of Truth/
-│   │       ├── Wizards First Rule.md
-│   |   
+│   │   |   ├── # | Wizards First Rule.md
+│   │   |
+│   │   ├── The Law of Nines.md
+|   |
 |   |
 | sortBy: authorNameLF
-│   ├── Goodkind, Terry/
-│   │   ├── The Law of Nines.md
-│   |   
+|   |
 │   ├── Goodkind, Terry/
 │   │   ├── Sword of Truth/
-│   │       ├── Wizards First Rule.md
+│   │   |   ├── # | Wizards First Rule.md
+│   │   |
+│   │   ├── The Law of Nines.md
+|   |
 ```
 
 ---
 
-## 📜 Markdown Template Example
+## Markdown Template Example
 You can define your own **markdown template** using placeholders.
 
 
