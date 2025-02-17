@@ -49,19 +49,23 @@ Audiobook notes are stored in:
 ```
 Books/
 ├── ABS/
-│   ├── Goodkind, Terry/
-│   │   ├── The Law of Nines.md
-│   |   
-│   ├── Goodkind, Terry/
-│   │   ├── Sword of Truth/
-│   │   │   ├── Wizards First Rule.md
-│   |   
+|   |
+| sortBy: authorName
 │   ├── Terry Goodkind/
 │   │   ├── The Law of Nines.md
 │   |   
 │   ├── Terry Goodkind/
 │   │   ├── Sword of Truth/
-│   │   │   ├── Wizards First Rule.md
+│   │       ├── Wizards First Rule.md
+│   |   
+|   |
+| sortBy: authorNameLF
+│   ├── Goodkind, Terry/
+│   │   ├── The Law of Nines.md
+│   |   
+│   ├── Goodkind, Terry/
+│   │   ├── Sword of Truth/
+│   │       ├── Wizards First Rule.md
 ```
 
 ---
