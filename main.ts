@@ -84,9 +84,9 @@ export default class ABSPlugin extends Plugin {
       }))
       .sort((a, b) => a.relPath.localeCompare(b.relPath)); 
 
-    const folder = this.app.vault.getAbstractFileByPath(`${this.settings.folder}`);
+    const folder = this.app.vault.getAbstractFileByPath(this.settings.folder);
     if (!folder) {
-      await this.app.vault.createFolder(`${this.settings.folder}`);
+      await this.app.vault.createFolder(this.settings.folder);
     }
 
     let abData: Record<string, any> = {};
@@ -106,21 +106,31 @@ export default class ABSPlugin extends Plugin {
       abJsonData.title = metadata.title;
 
       const sanitizedTitle = metadata.title.replace(/[\/:*?"<>|]/g, "");
-      var filePath = ""
 
-      var sortArtist = `${abJsonData.authorNameLF}`
-      if (`${this.settings.sortBy}` == "authorNameLF") {
-        sortArtist = `${abJsonData.authorNameLF}`
-      }else if (`${this.settings.sortBy}` == "authorName") {
-        sortArtist = `${abJsonData.authorName}`
+      var sortArtist = abJsonData.authorNameLF
+      if (this.settings.sortBy == "authorNameLF") {
+        sortArtist = abJsonData.authorNameLF
+      }else if (this.settings.sortBy == "authorName") {
+        sortArtist = abJsonData.authorName
       }
+
+      var filePath = `${this.settings.folder}/${sortArtist}/${sanitizedTitle}.md`;
+
+      const regex = /\b\d+(\.\d+)?,/;
 
       if (book.metadata.seriesName != "") {
-        filePath = `${this.settings.folder}/${sortArtist}/${book.metadata.seriesName.replace(/\s+#\d+$/, "").trim()}/${sanitizedTitle}.md`;
-      } else {
-        filePath = `${this.settings.folder}/${sortArtist}/${sanitizedTitle}.md`;
+        var origName = book.metadata.seriesName
+        if (regex.test(origName)) {
+          const parts = origName.split(/(?<=\b\d+(\.\d+)?),\s*/);
+          origName = parts[0]
+        }
+        const seriesTitle = origName.replace(/\s+#\d+(\.\d+)?$/, "").trim();
+        const numberMatch = origName.match(/\s+#(\d+(\.\d+)?)$/);
+        const number = numberMatch ? numberMatch[1] : null;
+        filePath = `${this.settings.folder}/${sortArtist}/${seriesTitle}/${number} | ${sanitizedTitle}.md`;
       }
-      console.log(filePath)
+
+      // console.log(filePath)
       if (!this.app.vault.getAbstractFileByPath(filePath)) {
         await this.ensureFolderExists(filePath);
         await this.app.vault.create(filePath, this.getBookTemplate(abJsonData))
@@ -150,7 +160,7 @@ export default class ABSPlugin extends Plugin {
   }
 
   getBookTemplate(abJsonData) {
-    return `${this.settings.template}`
+    return this.settings.template
       .replace(/{{(.*?)}}/g, (_, key) => {
         return abJsonData[key.trim()] || "";
         });
