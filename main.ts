@@ -76,6 +76,7 @@ export default class ABSPlugin extends Plugin {
     
     const books = (data.results || [])
       .map((book: any) => ({
+        id: book.id,
         relPath: book.relPath,
         metadata: book.media?.metadata || {}, 
       }))
@@ -86,23 +87,34 @@ export default class ABSPlugin extends Plugin {
       await this.app.vault.createFolder(`${this.settings.folder}`);
     }
 
+    let abData: Record<string, any> = {};
+
     for (const book of books) {
       var metadata = book.metadata;
-      var author = metadata.author;
-      var authorNameLF = metadata.authorNameLF;
+      abData["author"] = metadata.authorName;
+      abData["authorNameLF"] = metadata.authorNameLF;
+      abData["coverURL"] = `https://${this.settings.host}/audiobookshelf/api/items/${book.id}/cover`
+      abData["description"] = metadata.description;
+      abData["jsonData"] = JSON.stringify(book, null, 2)
+      abData["narrator"] = metadata.narrator;
+      abData["publishedDate"] = metadata.publishedDate;
+      abData["publishedYear"] = metadata.publishedYear;
+      abData["publisher"] = metadata.publisher;
+      abData["title"] = metadata.title;
 
       const sanitizedTitle = metadata.title.replace(/[\/:*?"<>|]/g, "");
       var filePath = ""
 
       if (book.metadata.seriesName != "") {
-        filePath = `${this.settings.folder}/${authorNameLF}/${book.metadata.seriesName.replace(/\s+#\d+$/, "").trim()}/${sanitizedTitle}.md`;
+        filePath = `${this.settings.folder}/${abData["authorNameLF"]}/${book.metadata.seriesName.replace(/\s+#\d+$/, "").trim()}/${sanitizedTitle}.md`;
       } else {
-        filePath = `${this.settings.folder}/${authorNameLF}/${sanitizedTitle}.md`;
+        filePath = `${this.settings.folder}/${abData["authorNameLF"]}/${sanitizedTitle}.md`;
       }
 
       if (!this.app.vault.getAbstractFileByPath(filePath)) {
         await this.ensureFolderExists(filePath);
-        await this.app.vault.create(filePath, JSON.stringify(book, null, 2));
+        await this.app.vault.create(filePath, this.getBookTemplate(abData))
+        // await this.app.vault.create(filePath, JSON.stringify(book, null, 2));
         console.log(`Created: ${filePath}`);
       } else {
         console.log(`Skipped: ${filePath} (Already exists)`);
@@ -127,8 +139,17 @@ export default class ABSPlugin extends Plugin {
     }
   }
 
-  getBookTemplate(title) {
-    return `# ${title}\n\n## Summary\n\n(Add summary here)\n\n## Notes\n\n(Add your notes here)`;
+  getBookTemplate(abData) {
+    return `${this.settings.template}`
+      .replace(/{{author}}/g, abData["author"])
+      .replace(/{{jsonData}}/g, abData["jsonData"])
+      .replace(/{{title}}/g, abData["title"])
+      .replace(/{{coverURL}}/g, abData["coverURL"])
+      .replace(/{{narrator}}/g, abData["narrator"])
+      .replace(/{{publishedYear}}/g, abData["publishedYear"])
+      .replace(/{{publishedDate}}/g, abData["publishedDate"])
+      .replace(/{{publisher}}/g, abData["publisher"])
+      .replace(/{{description}}/g, abData["description"]);
   }
 
   async saveSettings() {

@@ -1,6 +1,6 @@
 # Obsidian Audiobookshelf Importer
 
-## \*\*This is a work in progress, please treat it as such 😼 - as of now, templating isn't implemented.\*\*
+## \*\*This is a work in progress 😼\*\*
 
 📖 **Obsidian Audiobookshelf Importer** is an Obsidian plugin that fetches audiobook metadata from **[Audiobookshelf](https://www.audiobookshelf.org/)** via its API and creates structured markdown notes in your Obsidian vault.
 
@@ -8,7 +8,7 @@
 ✅ Fetches audiobook data from an **Audiobookshelf** instance  
 ✅ Uses **configurable settings** for API connection and file structure  
 ✅ Automatically **creates missing folders**  
-❌ Supports **custom markdown templates** for new audiobook notes  
+✅ Supports **custom markdown templates** for new audiobook notes  
 ✅ Organizes notes under **`<settings.folder>/authorLastFirst/<Series if exists>/title.md`**  
 
 ---
@@ -48,36 +48,46 @@ Audiobooks/
   │   │   ├── Wizards First Rule.md
 ```
 
-<!-- ---
+---
 
 ## 📜 Markdown Template Example
 You can define your own **markdown template** using placeholders.
 
+
+![](resources/import.png)
+
 Example:
 ```
-# {{title}}
+![{{title}}|200x200]({{coverURL}})
 
-**Author:** {{author}}  
-**Narrator:** {{narrator}}  
-**Series:** {{series}} (Book {{seriesNumber}})  
-**Published:** {{publishedYear}}  
-**Publisher:** {{publisher}}  
-**ASIN:** {{asin}}
+## ✍️ Author 
+{{author}}
 
 ## 📜 Description
 {{description}}
+
+Data:: 
+    ```
+    {{jsonData}}
+    ```
+
+**Narrator:** {{narrator}}   
+**Published:** {{publishedYear}}  
+**Publisher:** {{publisher}}  
+
 ```
 
 ### 🔹 Supported Placeholders
-- `{{title}}`
 - `{{author}}`
+- `{{authorNameLF}}`
+- `{{coverURL}}`
+- `{{description}}`
+- `{{jsonData}}`
 - `{{narrator}}`
-- `{{series}}`
-- `{{seriesNumber}}`
+- `{{publishedDate}}`
 - `{{publishedYear}}`
-- `{{publisher}}`
-- `{{asin}}`
-- `{{description}}` -->
+- `{{publisher}}` 
+- `{{title}}`
 
 ---
 
