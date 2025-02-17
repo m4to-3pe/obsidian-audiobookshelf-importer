@@ -6,6 +6,7 @@ interface ABSPluginSettings {
   token: string;
   folder: string;
   template: string;
+  sortBy: string
 }
 
 const DEFAULT_SETTINGS: ABSPluginSettings = {
@@ -14,6 +15,7 @@ const DEFAULT_SETTINGS: ABSPluginSettings = {
   token: "",
   folder: "",
   template: "",
+  sortBy: "",
 };
 
 export default class ABSPlugin extends Plugin {
@@ -106,19 +108,26 @@ export default class ABSPlugin extends Plugin {
       const sanitizedTitle = metadata.title.replace(/[\/:*?"<>|]/g, "");
       var filePath = ""
 
-      if (book.metadata.seriesName != "") {
-        filePath = `${this.settings.folder}/${abJsonData.authorNameLF}/${book.metadata.seriesName.replace(/\s+#\d+$/, "").trim()}/${sanitizedTitle}.md`;
-      } else {
-        filePath = `${this.settings.folder}/${abJsonData.authorNameLF}/${sanitizedTitle}.md`;
+      var sortArtist = `${abJsonData.authorNameLF}`
+      if (`${this.settings.sortBy}` == "authorNameLF") {
+        sortArtist = `${abJsonData.authorNameLF}`
+      }else if (`${this.settings.sortBy}` == "authorName") {
+        sortArtist = `${abJsonData.authorName}`
       }
 
+      if (book.metadata.seriesName != "") {
+        filePath = `${this.settings.folder}/${sortArtist}/${book.metadata.seriesName.replace(/\s+#\d+$/, "").trim()}/${sanitizedTitle}.md`;
+      } else {
+        filePath = `${this.settings.folder}/${sortArtist}/${sanitizedTitle}.md`;
+      }
+      console.log(filePath)
       if (!this.app.vault.getAbstractFileByPath(filePath)) {
         await this.ensureFolderExists(filePath);
         await this.app.vault.create(filePath, this.getBookTemplate(abJsonData))
         // await this.app.vault.create(filePath, JSON.stringify(book, null, 2));
-        console.log(`Created: ${filePath}`);
+        // console.log(`Created: ${filePath}`);
       } else {
-        console.log(`Skipped: ${filePath} (Already exists)`);
+        // console.log(`Skipped: ${filePath} (Already exists)`);
       }
     }
       new Notice("Books fetched and notes created successfully!");
@@ -217,6 +226,25 @@ class ABSPluginSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           })
       );
+
+    new Setting(containerEl)
+      .setName("PAge Author Sort")
+      .setDesc("Sort new Pages. Default: By Author Name | LN, FN")
+      .addDropdown((dropdown) => {
+        const options = {
+          ["authorNameLF" /* authorNameLF */]: "Author Name | LN, FN (Asc)",
+          ["authorName" /* authorName */]: "Author Name | FN, LN (Asc)"
+        };
+        dropdown
+        .addOptions(options)
+          .setValue(this.plugin.settings.sortBy)
+          .onChange(async (value) => {
+            console.log("value", value);
+            this.plugin.settings.sortBy = value;
+            await this.plugin.saveSettings();
+          }
+        );
+      });
 
     new Setting(containerEl)
       .setName("Template")
