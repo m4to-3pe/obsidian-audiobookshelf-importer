@@ -99,8 +99,9 @@ class ABSPlugin extends obsidian_1.Plugin {
                         metadata: ((_a = book.media) === null || _a === void 0 ? void 0 : _a.metadata) || {},
                     });
                 });
-                // Fetch bookmarks
+                // Fetch bookmarks and mediaProgress
                 let bookmarks = [];
+                let mediaProgress = [];
                 try {
                     const meResponse = yield (0, obsidian_1.request)({
                         url: meUrl,
@@ -112,10 +113,11 @@ class ABSPlugin extends obsidian_1.Plugin {
                     if (meResponse) {
                         const meData = JSON.parse(meResponse);
                         bookmarks = Array.isArray(meData.bookmarks) ? meData.bookmarks : [];
+                        mediaProgress = Array.isArray(meData.mediaProgress) ? meData.mediaProgress : [];
                     }
                 }
                 catch (err) {
-                    console.warn("Could not fetch bookmarks:", err);
+                    console.warn("Could not fetch bookmarks or mediaProgress:", err);
                 }
                 // Group bookmarks by libraryItemId
                 const bookmarksById = {};
@@ -134,9 +136,21 @@ class ABSPlugin extends obsidian_1.Plugin {
                 if (!folder) {
                     yield this.app.vault.createFolder(this.settings.abDir);
                 }
+                // Map mediaProgress to libraryItemId
+                const progressById = {};
+                for (const mp of mediaProgress) {
+                    progressById[mp.libraryItemId] = mp;
+                }
                 for (const book of books) {
                     const metadata = book.metadata;
                     const bookWithBookmarks = Object.assign(Object.assign({}, book), { bookmarks: bookmarksById[book.id] || [] });
+                    const progress = progressById[book.id];
+                    const isStarted = !!progress;
+                    const isFinished = !!(progress && progress.isFinished);
+                    let progressPercent = 0;
+                    if (progress && typeof progress.progress === "number" && !isNaN(progress.progress)) {
+                        progressPercent = Math.round(progress.progress * 100);
+                    }
                     const abJsonData = {
                         metadata,
                         authorName: metadata.authorName,
@@ -150,6 +164,9 @@ class ABSPlugin extends obsidian_1.Plugin {
                         publisher: metadata.publisher,
                         title: metadata.title,
                         bookmarks: bookmarksById[book.id] || [],
+                        isStarted,
+                        isFinished,
+                        Progress: progressPercent, // 0-100
                     };
                     const sanitizedTitle = metadata.title.replace(/[\/:*?"<>|]/g, "");
                     let sortArtist = abJsonData.authorNameLF;

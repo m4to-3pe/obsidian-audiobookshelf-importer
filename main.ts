@@ -126,8 +126,9 @@ export default class ABSPlugin extends Plugin {
           metadata: book.media?.metadata || {},
         }));
 
-      // Fetch bookmarks
+      // Fetch bookmarks and mediaProgress
       let bookmarks: any[] = [];
+      let mediaProgress: any[] = [];
       try {
         const meResponse = await request({
           url: meUrl,
@@ -139,9 +140,10 @@ export default class ABSPlugin extends Plugin {
         if (meResponse) {
           const meData = JSON.parse(meResponse);
           bookmarks = Array.isArray(meData.bookmarks) ? meData.bookmarks : [];
+          mediaProgress = Array.isArray(meData.mediaProgress) ? meData.mediaProgress : [];
         }
       } catch (err) {
-        console.warn("Could not fetch bookmarks:", err);
+        console.warn("Could not fetch bookmarks or mediaProgress:", err);
       }
 
       // Group bookmarks by libraryItemId
@@ -166,25 +168,42 @@ export default class ABSPlugin extends Plugin {
         await this.app.vault.createFolder(this.settings.abDir);
       }
 
+      // Map mediaProgress to libraryItemId
+      const progressById: Record<string, any> = {};
+      for (const mp of mediaProgress) {
+        progressById[mp.libraryItemId] = mp;
+      }
+
       for (const book of books) {
         const metadata = book.metadata;
         const bookWithBookmarks = {
           ...book,
           bookmarks: bookmarksById[book.id] || []
         };
+        const progress = progressById[book.id];
+        const isStarted = !!progress;
+        const isFinished = !!(progress && progress.isFinished);
+        let progressPercent = 0;
+        if (progress && typeof progress.progress === "number" && !isNaN(progress.progress)) {
+          progressPercent = Math.round(progress.progress * 100);
+        }
+
         const abJsonData: any = {
           metadata,
           authorName: metadata.authorName,
           authorNameLF: metadata.authorNameLF,
           coverURL: `https://${this.settings.host}/audiobookshelf/api/items/${book.id}/cover`,
           description: metadata.description,
-          jsonData: JSON.stringify(bookWithBookmarks, null, 2), // <-- now includes bookmarks!
+          jsonData: JSON.stringify(bookWithBookmarks, null, 2),
           narrator: metadata.narrator,
           publishedDate: metadata.publishedDate,
           publishedYear: metadata.publishedYear,
           publisher: metadata.publisher,
           title: metadata.title,
           bookmarks: bookmarksById[book.id] || [],
+          isStarted,   // boolean
+          isFinished,  // boolean
+          Progress: progressPercent, // 0-100
         };
 
         const sanitizedTitle = metadata.title.replace(/[\/:*?"<>|]/g, "");
