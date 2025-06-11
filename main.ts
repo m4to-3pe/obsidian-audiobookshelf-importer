@@ -1,5 +1,5 @@
 import { request, Notice, Plugin, PluginSettingTab, Setting, App, TFile } from "obsidian";
-import * as yaml from "js-yaml"; // Make sure to install js-yaml: npm install js-yaml
+import * as yaml from "js-yaml";
 
 interface ABSPluginSettings {
   host: string;
