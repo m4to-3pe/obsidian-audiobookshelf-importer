@@ -130,16 +130,14 @@ class ABSPlugin extends obsidian_1.Plugin {
                         createdAt: bm.createdAt,
                     });
                 }
-                // Attach bookmarks to books
-                const result = books.map((book) => (Object.assign(Object.assign({}, book), { bookmarks: bookmarksById[book.id] || [] })));
-                const folder = this.app.vault.getAbstractFileByPath(this.settings.abDir);
-                if (!folder) {
-                    yield this.app.vault.createFolder(this.settings.abDir);
-                }
                 // Map mediaProgress to libraryItemId
                 const progressById = {};
                 for (const mp of mediaProgress) {
                     progressById[mp.libraryItemId] = mp;
+                }
+                const folder = this.app.vault.getAbstractFileByPath(this.settings.abDir);
+                if (!folder) {
+                    yield this.app.vault.createFolder(this.settings.abDir);
                 }
                 for (const book of books) {
                     const metadata = book.metadata;
@@ -189,9 +187,15 @@ class ABSPlugin extends obsidian_1.Plugin {
                         const number = numberMatch ? numberMatch[1] : null;
                         filePath = `${this.settings.abDir}/${sortArtist}/${seriesTitle}/${number} | ${sanitizedTitle}.md`;
                     }
-                    if (!this.app.vault.getAbstractFileByPath(filePath)) {
+                    const file = this.app.vault.getAbstractFileByPath(filePath);
+                    const metadataSection = this.getBookTemplate(abJsonData, this.settings.abTemplate);
+                    if (!file) {
                         yield this.ensureFolderExists(filePath);
-                        yield this.app.vault.create(filePath, this.getBookTemplate(abJsonData, this.settings.abTemplate));
+                        yield this.app.vault.create(filePath, `%%Metadata - When Syncing everything between these comments will be rewritten%%\n${metadataSection}\n%%\n\n# Your notes here`);
+                    }
+                    else if (file instanceof obsidian_1.TFile) {
+                        yield updateFrontmatterWithTemplateVars(this.app.vault, file, abJsonData);
+                        yield updateMetadataSection(this.app.vault, file, metadataSection);
                     }
                 }
                 new obsidian_1.Notice("Audiobooks fetched and notes created successfully!");
@@ -540,4 +544,57 @@ class ABSPluginSettingTab extends obsidian_1.PluginSettingTab {
         podWrapper.appendChild(podFieldsContainer);
         podFieldsContainer.style.display = this.plugin.settings.podEnable ? "block" : "none";
     }
+}
+// --- Helper: Update YAML frontmatter with {{key}} variables ---
+function updateFrontmatterWithTemplateVars(vault, file, abJsonData) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const content = yield vault.read(file);
+        const frontmatterRegex = /^---\n([\s\S]*?)\n---\n?/;
+        let newContent;
+        if (frontmatterRegex.test(content)) {
+            const oldFrontmatter = content.match(frontmatterRegex)[1];
+            const lines = oldFrontmatter.split("\n");
+            const updatedLines = lines.map(line => {
+                // Replace any {{key}} in the value with abJsonData[key]
+                return line.replace(/{{\s*([\w]+)\s*}}/g, (_, key) => abJsonData[key] !== undefined ? abJsonData[key] : `{{${key}}}`);
+            });
+            const newYaml = updatedLines.join("\n");
+            newContent = content.replace(frontmatterRegex, `---\n${newYaml}\n---\n`);
+        }
+        else {
+            // No frontmatter, just leave content as is (or you could prepend a default)
+            newContent = content;
+        }
+        yield vault.modify(file, newContent);
+    });
+}
+// --- Helper: Update or insert the %%Metadata%% section ---
+function updateMetadataSection(vault, file, newSection) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const content = yield vault.read(file);
+        const metaRegex = /%%Metadata - When Syncing everything between these comments will be rewritten%%([\s\S]*?)%%/m;
+        if (metaRegex.test(content)) {
+            // Replace existing metadata section
+            const newContent = content.replace(metaRegex, `%%Metadata - When Syncing everything between these comments will be rewritten%%\n${newSection}\n%%`);
+            yield vault.modify(file, newContent);
+        }
+        else {
+            // Insert after frontmatter if present, else at top
+            const frontmatterMatch = content.match(/^(---\n[\s\S]*?\n---\n?)/);
+            let newContent;
+            if (frontmatterMatch) {
+                const fm = frontmatterMatch[1];
+                newContent =
+                    fm +
+                        `%%Metadata - When Syncing everything between these comments will be rewritten%%\n${newSection}\n%%\n` +
+                        content.slice(fm.length);
+            }
+            else {
+                newContent =
+                    `%%Metadata - When Syncing everything between these comments will be rewritten%%\n${newSection}\n%%\n` +
+                        content;
+            }
+            yield vault.modify(file, newContent);
+        }
+    });
 }

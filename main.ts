@@ -1,4 +1,5 @@
-import {  request, Notice, Plugin, PluginSettingTab, Setting, App } from "obsidian";
+import { request, Notice, Plugin, PluginSettingTab, Setting, App, TFile } from "obsidian";
+import * as yaml from "js-yaml"; // Make sure to install js-yaml: npm install js-yaml
 
 interface ABSPluginSettings {
   host: string;
@@ -157,21 +158,15 @@ export default class ABSPlugin extends Plugin {
         });
       }
 
-      // Attach bookmarks to books
-      const result = books.map((book: Book) => ({
-        ...book,
-        bookmarks: bookmarksById[book.id] || []
-      }));
-
-      const folder = this.app.vault.getAbstractFileByPath(this.settings.abDir);
-      if (!folder) {
-        await this.app.vault.createFolder(this.settings.abDir);
-      }
-
       // Map mediaProgress to libraryItemId
       const progressById: Record<string, any> = {};
       for (const mp of mediaProgress) {
         progressById[mp.libraryItemId] = mp;
+      }
+
+      const folder = this.app.vault.getAbstractFileByPath(this.settings.abDir);
+      if (!folder) {
+        await this.app.vault.createFolder(this.settings.abDir);
       }
 
       for (const book of books) {
@@ -231,9 +226,18 @@ export default class ABSPlugin extends Plugin {
           filePath = `${this.settings.abDir}/${sortArtist}/${seriesTitle}/${number} | ${sanitizedTitle}.md`;
         }
 
-        if (!this.app.vault.getAbstractFileByPath(filePath)) {
+        const file = this.app.vault.getAbstractFileByPath(filePath);
+        const metadataSection = this.getBookTemplate(abJsonData, this.settings.abTemplate);
+
+        if (!file) {
           await this.ensureFolderExists(filePath);
-          await this.app.vault.create(filePath, this.getBookTemplate(abJsonData, this.settings.abTemplate));
+          await this.app.vault.create(
+            filePath,
+            `%%Metadata - When Syncing everything between these comments will be rewritten%%\n${metadataSection}\n%%\n\n# Your notes here`
+          );
+        } else if (file instanceof TFile) {
+          await updateFrontmatterWithTemplateVars(this.app.vault, file, abJsonData);
+          await updateMetadataSection(this.app.vault, file, metadataSection);
         }
       }
       new Notice("Audiobooks fetched and notes created successfully!");
@@ -619,6 +623,70 @@ class ABSPluginSettingTab extends PluginSettingTab {
     podWrapper.appendChild(podFieldsContainer);
     podFieldsContainer.style.display = this.plugin.settings.podEnable ? "block" : "none";
 
+  }
+}
+
+// --- Helper: Update YAML frontmatter with {{key}} variables ---
+async function updateFrontmatterWithTemplateVars(
+  vault: any,
+  file: TFile,
+  abJsonData: Record<string, any>
+) {
+  const content = await vault.read(file);
+  const frontmatterRegex = /^---\n([\s\S]*?)\n---\n?/;
+  let newContent: string;
+
+  if (frontmatterRegex.test(content)) {
+    const oldFrontmatter = content.match(frontmatterRegex)![1];
+    const lines = oldFrontmatter.split("\n");
+    const updatedLines = lines.map(line => {
+      // Replace any {{key}} in the value with abJsonData[key]
+      return line.replace(/{{\s*([\w]+)\s*}}/g, (_, key) =>
+        abJsonData[key] !== undefined ? abJsonData[key] : `{{${key}}}`
+      );
+    });
+    const newYaml = updatedLines.join("\n");
+    newContent = content.replace(frontmatterRegex, `---\n${newYaml}\n---\n`);
+  } else {
+    // No frontmatter, just leave content as is (or you could prepend a default)
+    newContent = content;
+  }
+
+  await vault.modify(file, newContent);
+}
+
+// --- Helper: Update or insert the %%Metadata%% section ---
+async function updateMetadataSection(
+  vault: any,
+  file: TFile,
+  newSection: string
+) {
+  const content = await vault.read(file);
+  const metaRegex = /%%Metadata - When Syncing everything between these comments will be rewritten%%([\s\S]*?)%%/m;
+
+  if (metaRegex.test(content)) {
+    // Replace existing metadata section
+    const newContent = content.replace(
+      metaRegex,
+      `%%Metadata - When Syncing everything between these comments will be rewritten%%\n${newSection}\n%%`
+    );
+    await vault.modify(file, newContent);
+  } else {
+    // Insert after frontmatter if present, else at top
+    const frontmatterMatch = content.match(/^(---\n[\s\S]*?\n---\n?)/);
+    let newContent;
+    if (frontmatterMatch) {
+      const fm = frontmatterMatch[1];
+      newContent =
+        fm +
+        `%%Metadata - When Syncing everything between these comments will be rewritten%%\n${newSection}\n%%\n` +
+        content.slice(fm.length);
+    } else {
+      newContent =
+        `%%Metadata - When Syncing everything between these comments will be rewritten%%\n${newSection}\n%%\n` +
+        content;
+    }
+    await vault.modify(file, newContent);
   }
 }
 
