@@ -90,6 +90,9 @@ Example:
 ## 📜 Description
 {{description}}
 
+## Bookmarks
+{{bookmarks}}
+
 Data:: 
     ```
     {{jsonData}}
@@ -112,6 +115,8 @@ Data::
 - `{{publishedYear}}`
 - `{{publisher}}` 
 - `{{title}}`
+- `{{bookmarks}}` 
+   - Will create a Markdown List in the Format `- Title - hh:mm:ss`
 
 ---
 
