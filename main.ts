@@ -101,8 +101,10 @@ export default class ABSPlugin extends Plugin {
 
   async abImport() {
     const apiUrl = `https://${this.settings.host}/api/libraries/${this.settings.abLib}/items?sort=media.metadata.title`;
+    const meUrl = `https://${this.settings.host}/api/me`;
 
     try {
+      // Fetch audiobooks
       const response = await request({
         url: apiUrl,
         method: "GET",
@@ -110,76 +112,111 @@ export default class ABSPlugin extends Plugin {
           Authorization: `Bearer ${this.settings.apiKey}`,
         },
       });
-  
 
       if (!response) {
         throw new Error(`Failed to fetch books: ${response}`);
       }
 
-    const data = JSON.parse(response);
-    
-    const books = (data.results || [])
-      .map((book: any) => ({
-        id: book.id,
-        relPath: book.relPath,
-        metadata: book.media?.metadata || {}, 
+      const data = JSON.parse(response);
+
+      const books = (data.results || [])
+        .map((book: any) => ({
+          id: book.id,
+          relPath: book.relPath,
+          metadata: book.media?.metadata || {},
+        }));
+
+      // Fetch bookmarks
+      let bookmarks: any[] = [];
+      try {
+        const meResponse = await request({
+          url: meUrl,
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${this.settings.apiKey}`,
+          },
+        });
+        if (meResponse) {
+          const meData = JSON.parse(meResponse);
+          bookmarks = Array.isArray(meData.bookmarks) ? meData.bookmarks : [];
+        }
+      } catch (err) {
+        console.warn("Could not fetch bookmarks:", err);
+      }
+
+      // Group bookmarks by libraryItemId
+      const bookmarksById: Record<string, any[]> = {};
+      for (const bm of bookmarks) {
+        if (!bookmarksById[bm.libraryItemId]) bookmarksById[bm.libraryItemId] = [];
+        bookmarksById[bm.libraryItemId].push({
+          title: bm.title,
+          time: bm.time,
+          createdAt: bm.createdAt,
+        });
+      }
+
+      // Attach bookmarks to books
+      const result = books.map((book: Book) => ({
+        ...book,
+        bookmarks: bookmarksById[book.id] || []
       }));
 
-    const folder = this.app.vault.getAbstractFileByPath(this.settings.abDir);
-    if (!folder) {
-      await this.app.vault.createFolder(this.settings.abDir);
-    }
-
-    const abJsonData : any = {};
-    for (const book of books) {
-      var metadata = book.metadata;
-      abJsonData.metadata = metadata;
-      abJsonData.authorName = metadata.authorName;
-      abJsonData.authorNameLF = metadata.authorNameLF;
-      abJsonData.coverURL = `https://${this.settings.host}/audiobookshelf/api/items/${book.id}/cover`;
-      abJsonData.description = metadata.description;
-      abJsonData.jsonData = JSON.stringify(book, null, 2);
-      abJsonData.narrator = metadata.narrator;
-      abJsonData.publishedDate = metadata.publishedDate;
-      abJsonData.publishedYear = metadata.publishedYear;
-      abJsonData.publisher = metadata.publisher;
-      abJsonData.title = metadata.title;
-
-      const sanitizedTitle = metadata.title.replace(/[\/:*?"<>|]/g, "");
-
-      var sortArtist = abJsonData.authorNameLF
-      if (this.settings.abSortBy == "authorNameLF") {
-        sortArtist = abJsonData.authorNameLF
-      }else if (this.settings.abSortBy == "authorName") {
-        sortArtist = abJsonData.authorName
+      const folder = this.app.vault.getAbstractFileByPath(this.settings.abDir);
+      if (!folder) {
+        await this.app.vault.createFolder(this.settings.abDir);
       }
 
-      var filePath = `${this.settings.abDir}/${sortArtist}/${sanitizedTitle}.md`;
+      for (const book of books) {
+        const metadata = book.metadata;
+        const bookWithBookmarks = {
+          ...book,
+          bookmarks: bookmarksById[book.id] || []
+        };
+        const abJsonData: any = {
+          metadata,
+          authorName: metadata.authorName,
+          authorNameLF: metadata.authorNameLF,
+          coverURL: `https://${this.settings.host}/audiobookshelf/api/items/${book.id}/cover`,
+          description: metadata.description,
+          jsonData: JSON.stringify(bookWithBookmarks, null, 2), // <-- now includes bookmarks!
+          narrator: metadata.narrator,
+          publishedDate: metadata.publishedDate,
+          publishedYear: metadata.publishedYear,
+          publisher: metadata.publisher,
+          title: metadata.title,
+          bookmarks: bookmarksById[book.id] || [],
+        };
 
-      const regex = /\b\d+(\.\d+)?,/;
+        const sanitizedTitle = metadata.title.replace(/[\/:*?"<>|]/g, "");
 
-      if (book.metadata.seriesName != "") {
-        var origName = book.metadata.seriesName
-        if (regex.test(origName)) {
-          const parts = origName.split(/(?<=\b\d+(\.\d+)?),\s*/);
-          origName = parts[0]
+        let sortArtist = abJsonData.authorNameLF;
+        if (this.settings.abSortBy == "authorNameLF") {
+          sortArtist = abJsonData.authorNameLF;
+        } else if (this.settings.abSortBy == "authorName") {
+          sortArtist = abJsonData.authorName;
         }
-        const seriesTitle = origName.replace(/\s+#\d+(\.\d+)?$/, "").trim();
-        const numberMatch = origName.match(/\s+#(\d+(\.\d+)?)$/);
-        const number = numberMatch ? numberMatch[1] : null;
-        filePath = `${this.settings.abDir}/${sortArtist}/${seriesTitle}/${number} | ${sanitizedTitle}.md`;
-      }
 
-      // console.log(filePath)
-      if (!this.app.vault.getAbstractFileByPath(filePath)) {
-        await this.ensureFolderExists(filePath);
-        await this.app.vault.create(filePath, this.getBookTemplate(abJsonData, this.settings.abTemplate))
-        // await this.app.vault.create(filePath, JSON.stringify(book, null, 2));
-        // console.log(`Created: ${filePath}`);
-      } else {
-        // console.log(`Skipped: ${filePath} (Already exists)`);
+        let filePath = `${this.settings.abDir}/${sortArtist}/${sanitizedTitle}.md`;
+
+        const regex = /\b\d+(\.\d+)?,/;
+
+        if (book.metadata.seriesName != "") {
+          let origName = book.metadata.seriesName;
+          if (regex.test(origName)) {
+            const parts = origName.split(/(?<=\b\d+(\.\d+)?),\s*/);
+            origName = parts[0];
+          }
+          const seriesTitle = origName.replace(/\s+#\d+(\.\d+)?$/, "").trim();
+          const numberMatch = origName.match(/\s+#(\d+(\.\d+)?)$/);
+          const number = numberMatch ? numberMatch[1] : null;
+          filePath = `${this.settings.abDir}/${sortArtist}/${seriesTitle}/${number} | ${sanitizedTitle}.md`;
+        }
+
+        if (!this.app.vault.getAbstractFileByPath(filePath)) {
+          await this.ensureFolderExists(filePath);
+          await this.app.vault.create(filePath, this.getBookTemplate(abJsonData, this.settings.abTemplate));
+        }
       }
-    }
       new Notice("Audiobooks fetched and notes created successfully!");
     } catch (error) {
       console.error("Error fetching Audiobooks:", error, " from ", apiUrl);
@@ -395,10 +432,27 @@ export default class ABSPlugin extends Plugin {
   }
 
   getBookTemplate(jsonData: { [x: string]: any; }, template: string) {
-    return template
-      .replace(/{{(.*?)}}/g, (_, key) => {
-        return jsonData[key.trim()] || "";
-        });
+    // Helper to format seconds as hh:mm:ss
+    function formatTime(seconds: number): string {
+      const h = Math.floor(seconds / 3600);
+      const m = Math.floor((seconds % 3600) / 60);
+      const s = Math.floor(seconds % 60);
+      return [h, m, s].map(unit => unit.toString().padStart(2, "0")).join(":");
+    }
+
+    return template.replace(/{{(.*?)}}/g, (_, key) => {
+      key = key.trim();
+      if (key === "bookmarks" && Array.isArray(jsonData.bookmarks)) {
+        if (jsonData.bookmarks.length === 0) return "No bookmarks";
+        return jsonData.bookmarks
+          .map(
+            (bm: any) =>
+              `- ${bm.title || "Bookmark"} - ${formatTime(bm.time)}`
+          )
+          .join("\n");
+      }
+      return jsonData[key] ?? "";
+    });
   }
 
   async saveSettings() {
